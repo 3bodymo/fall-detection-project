@@ -57,15 +57,4 @@ output_path = "path_to_output_video.mp4"
 fall_detection_system.process_video(video_path, output_path)
 ```
 
-Alternatively, you can change the `video_path` and `output_path` variables directly in `fall_detection_system.py` and run the file:
-
-1. Open `fall_detection_system.py`.
-2. Modify the `video_path` and `output_path` variables:
-   ```python
-   video_path = "path_to_input_video.mp4"
-   output_path = "path_to_output_video.mp4"
-   ```
-3. Run the file:
-   ```bash
-   python fall_detection_system.py
-   ```
+Alternatively, you can change the `video_path` and `output_path` variables directly in `fall_detection_system.py` and run the file.

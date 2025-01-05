@@ -1,0 +1,4 @@
+debug/*
+old_code/
+test_videos/*
+models/*.pt

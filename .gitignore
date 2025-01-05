@@ -2,3 +2,4 @@ debug/*
 old_code/
 test_videos/*
 models/*.pt
+__pycache__/

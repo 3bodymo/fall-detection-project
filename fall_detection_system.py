@@ -5,6 +5,7 @@ from pose_processing import process_person
 from inference import FallDetector
 from utils import draw_overlay
 from config import CONNECTIONS, LSTM_MODEL_PATH, YOLO_MODEL_PATH, CONF_THRESHOLD_YOLO, IOU_THRESHOLD_PT
+import argparse
 
 class FallDetectionSystem:
     """
@@ -115,10 +116,69 @@ class FallDetectionSystem:
         out.release()
         cv2.destroyAllWindows()
 
-# Example usage
+    def process_camera_feed(self, camera_id=0, draw_pose=False):
+        """
+        Process real-time video feed from a camera
+        
+        Args:
+            camera_id: Camera device ID (default is 0 for built-in webcam)
+            draw_pose: Whether to draw pose keypoints and connections
+        
+        Returns:
+            None
+        """
+        # Initialize camera capture
+        cap = cv2.VideoCapture(camera_id)
+        
+        if not cap.isOpened():
+            print("Error: Could not open camera.")
+            return
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print("Error: Could not read frame.")
+                break
+
+            # Process each frame
+            processed_frame, fall_detections = self.process_frame(frame, draw_pose, detailed_output=True)
+            
+            # Display fall detection results
+            for person_id, is_fall, probability in fall_detections:
+                if is_fall:
+                    cv2.putText(processed_frame, f"FALL DETECTED! (ID: {person_id})", 
+                              (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+            # Display the processed frame
+            cv2.namedWindow('Fall Detection (Press ESC to exit)', cv2.WINDOW_NORMAL)
+            cv2.imshow('Fall Detection (Press ESC to exit)', processed_frame)
+            
+            # Break the loop if ESC is pressed
+            if cv2.waitKey(1) & 0xFF == 27:
+                break
+
+        cap.release()
+        cv2.destroyAllWindows()
+
+
 if __name__ == "__main__":
-    video_path = "test_videos/our_multi_test.mp4"
-    output_path = "test_videos/multi_test_output_video.mp4"
+    parser = argparse.ArgumentParser(description='Fall Detection System')
+    parser.add_argument('--source', choices=['video', 'camera'], default='video',
+                       help='Source of input (video file or camera)')
+    parser.add_argument('--input', default="test_videos/our_multi_test.mp4",
+                       help='Path to input video file (if source is video)')
+    parser.add_argument('--output', default="test_videos/multi_test_output_video.mp4",
+                       help='Path to output video file (if source is video)')
+    parser.add_argument('--camera-id', type=int, default=0,
+                       help='Camera device ID (default: 0)')
+    parser.add_argument('--draw-pose', action='store_true',
+                       help='Draw pose keypoints and connections')
+    
+    args = parser.parse_args()
     
     fall_detection_system = FallDetectionSystem()
-    fall_detection_system.process_video(video_path, output_path)
+    
+    if args.source == 'video':
+        fall_detection_system.process_video(args.input, args.output, draw_pose=args.draw_pose)
+    else:
+        fall_detection_system.process_camera_feed(args.camera_id, draw_pose=args.draw_pose)

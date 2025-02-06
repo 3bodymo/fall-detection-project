@@ -1,6 +1,14 @@
 # Fall Detection Project
 
-This project implements a fall detection system using YOLO for person detection, a person tracker, and an LSTM-based fall detector.
+This project implements a real-time fall detection system using YOLO for person detection, a person tracker, and an LSTM-based fall detector.
+
+## Features
+
+- Real-time person detection using YOLO
+- Person tracking across frames
+- Pose estimation and processing
+- LSTM-based fall detection
+- Support for both video files and live camera feed
 
 ## Installation
 
@@ -9,24 +17,32 @@ This project implements a fall detection system using YOLO for person detection,
    ```bash
    pip install -r requirements.txt
    ```
-3. You have to download a YOLO model, and we recommend you to use this model `yolo11l.pt`:
-   ```bash
-   wget https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11l.pt -P models/
-   ```
-4. Update the model path in `config.py`:
-   ```python
-   YOLO_MODEL_PATH = os.path.join(BASE_DIR, 'models', 'yolo11l.pt')
-   ```
 
 ## Usage
 
-### FallDetectionSystem
+### Command Line Interface
 
-The `FallDetectionSystem` class provides methods to process video frames and detect falls.
+The system can be run using command-line arguments:
 
-#### Initialization
+```bash
+# Process a video file
+python fall_detection_system.py --source video --input path/to/video.mp4 --output path/to/output.mp4 --draw-pose
 
-To initialize the fall detection system:
+# Process camera feed
+python fall_detection_system.py --source camera --camera-id 0 --draw-pose
+```
+
+Command line arguments:
+
+- `--source`: Choose between 'video' or 'camera' input
+- `--input`: Path to input video file (when source is 'video')
+- `--output`: Path to output video file (when source is 'video')
+- `--camera-id`: Camera device ID (default: 0)
+- `--draw-pose`: Flag to enable pose visualization
+
+### Python API
+
+#### Initialize the System
 
 ```python
 from fall_detection_system import FallDetectionSystem
@@ -36,25 +52,39 @@ fall_detection_system = FallDetectionSystem()
 
 #### Process a Single Frame
 
-To process a single frame and detect falls:
-
 ```python
-# ...existing code to open video file and set up video writer...
-
-processed_frame, has_fall = fall_detection_system.process_frame(frame)
-
-# ...existing code to display the processed frame...
+# Process frame with optional pose visualization and detailed output
+processed_frame, results = fall_detection_system.process_frame(
+    frame,
+    draw_pose=True,
+    detailed_output=True
+)
 ```
 
-#### Process a Video
-
-To process a video file and save the annotated video with fall detection results:
+#### Process a Video File
 
 ```python
-video_path = "path_to_input_video.mp4"
-output_path = "path_to_output_video.mp4"
-
-fall_detection_system.process_video(video_path, output_path)
+fall_detection_system.process_video(
+    video_path="input.mp4",
+    output_path="output.mp4",
+    speed_factor=1,
+    draw_pose=True
+)
 ```
 
-Alternatively, you can change the `video_path` and `output_path` variables directly in `fall_detection_system.py` and run the file.
+#### Process Camera Feed
+
+```python
+fall_detection_system.process_camera_feed(
+    camera_id=0,
+    draw_pose=True
+)
+```
+
+## Output
+
+- When processing video files, the system generates an annotated video with fall detection results
+- For camera feed, results are displayed in real-time
+- Green bounding boxes indicate normal activity
+- Red bounding boxes indicate detected falls
+- Optional pose keypoints and connections visualization

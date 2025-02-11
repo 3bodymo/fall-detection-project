@@ -27,7 +27,7 @@ class VideoApp(App):
     def build(self):
        
         # Load the new trained LSTM model
-        self.model = load_model('E:/Users/Настя/Downloads/thws/Project/app/latest/fall_detection_lstm_model2.keras')
+        self.model = load_model('E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/fall_detection_lstm_model2.keras')
 
         # Initialize MediaPipe Pose
         self.mp_pose = mp.solutions.pose
@@ -40,11 +40,11 @@ class VideoApp(App):
         self.connections = [(0, 1), (0, 2), (1, 2), (1, 3), (2, 4), (3, 5), (4, 6), (5, 7), (6, 8), (1, 12), (12, 10), (2, 11), (11, 9)]
 
         # Path to the local MP4 video file
-        # self.video_path = "E:/Users/Настя/Downloads/thws/Project/app/latest/test2.mp4"
+        self.video_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/test2.mp4"
         # video_path = "rtsp://admin:Fall_Detection0@192.168.0.100:554/h264Preview_01_sub"
-        self.video_path = "E:/Users/Настя/Downloads/thws/Project/app/latest/test2.mp4"
+        self.video_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/test2.mp4"
 
-        self.output_path = "E:/Users/Настя/Downloads/thws/Project/app/latest/output_video.mp4"  # Output video file
+        self.output_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/output_video.mp4"  # Output video file
         self.speed_factor = 1  # Default speed factor
 
         # Open the video file and get its properties
@@ -69,14 +69,14 @@ class VideoApp(App):
         self.pose_sequence = []
         self.fall_detected = False
         self.fall_segment_writer = None
-        self.fall_segment_path = "E:/Users/Настя/Downloads/thws/Project/app/latest/records/fall_segment_{}.mp4"
+        self.fall_segment_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/records/fall_segment_{}.mp4"
         self.fall_sequence = []
         self.fall_sequence_threshold = 2
         self.fall_recording = False
         self.non_fall_frame_count = 0
         self.fall_frame_count = 0
         self.fall_segment_index = 0
-        self.fall_segments_folder = "E:/Users/Настя/Downloads/thws/Project/app/latest/records"
+        self.fall_segments_folder = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/records"
         self.fall_segment_template = "fall_segment_{}.mp4"
         self.frame_count = 0
         self.thread = None
@@ -241,8 +241,8 @@ class VideoApp(App):
         # Convert the frame to a Kivy texture
             frame = frame[::-1]  # rotate frame
             buffer = frame.tobytes()
-            texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
-            texture.blit_buffer(buffer, colorfmt='bgr', bufferfmt='ubyte')
+            texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='rgb')
+            texture.blit_buffer(buffer, colorfmt='rgb', bufferfmt='ubyte')
             self.image.texture = texture
             
 
@@ -332,9 +332,11 @@ class VideoApp(App):
 
             # Frame logic processing
             self.process_frame(frame)
+            
+            display_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
             # Update the widget with a new frame
-            Clock.schedule_once(lambda dt: self.update(frame))
+            Clock.schedule_once(lambda dt: self.update(display_frame))
 
             # Key completion
             if cv2.waitKey(1) & 0xFF == 27:

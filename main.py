@@ -27,7 +27,7 @@ class VideoApp(App):
     def build(self):
        
         # Load the new trained LSTM model
-        self.model = load_model('C:/Users/Abdalrhman Morsi/Desktop/bullshit/Project/Semester_02/fall_detection_lstm_model2.keras')
+        self.model = load_model('E:/Users/Настя/Downloads/thws/Project/app/latest/fall_detection_lstm_model2.keras')
 
         # Initialize MediaPipe Pose
         self.mp_pose = mp.solutions.pose
@@ -42,14 +42,14 @@ class VideoApp(App):
         # Path to the local MP4 video file
         # self.video_path = "E:/Users/Настя/Downloads/thws/Project/app/latest/test2.mp4"
         # video_path = "rtsp://admin:Fall_Detection0@192.168.0.100:554/h264Preview_01_sub"
-        self.video_path = "C:/Users/Abdalrhman Morsi/Desktop/bullshit/Project/Semester_02/test2.mp4"
+        self.video_path = "E:/Users/Настя/Downloads/thws/Project/app/latest/test2.mp4"
 
-        self.output_path = "C/Users/Abdalrhman Morsi/Desktop/bullshit/Project/Semester_02/output_video.mp4"  # Output video file
+        self.output_path = "E:/Users/Настя/Downloads/thws/Project/app/latest/output_video.mp4"  # Output video file
         self.speed_factor = 1  # Default speed factor
 
         # Open the video file and get its properties
-        #self.cap = cv2.VideoCapture(self.video_path)
-        self.cap = cv2.VideoCapture(0)  # '0' - the first camera (web camera)
+        self.cap = cv2.VideoCapture(self.video_path)
+        # self.cap = cv2.VideoCapture(1)  # '0' - the first camera (web camera)
         
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.frame_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -69,14 +69,14 @@ class VideoApp(App):
         self.pose_sequence = []
         self.fall_detected = False
         self.fall_segment_writer = None
-        self.fall_segment_path = "C:/Users/Abdalrhman Morsi/Desktop/bullshit/Project/Semester_02/records/fall_segment_{}.mp4"
+        self.fall_segment_path = "E:/Users/Настя/Downloads/thws/Project/app/latest/records/fall_segment_{}.mp4"
         self.fall_sequence = []
         self.fall_sequence_threshold = 2
         self.fall_recording = False
         self.non_fall_frame_count = 0
         self.fall_frame_count = 0
         self.fall_segment_index = 0
-        self.fall_segments_folder = "C:/Users/Abdalrhman Morsi/Desktop/bullshit/Project/Semester_02/records"
+        self.fall_segments_folder = "E:/Users/Настя/Downloads/thws/Project/app/latest/records"
         self.fall_segment_template = "fall_segment_{}.mp4"
         self.frame_count = 0
         self.thread = None

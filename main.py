@@ -21,11 +21,13 @@ from kivy.uix.widget import Widget
 from kivy.uix.video import Video
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.textinput import TextInput
+from kivy.uix.label import Label
 
 
 class VideoApp(App):
     def build(self):
-       
+        self.video_path =""
         # Load the new trained LSTM model
         self.model = load_model('E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/fall_detection_lstm_model2.keras')
 
@@ -40,9 +42,8 @@ class VideoApp(App):
         self.connections = [(0, 1), (0, 2), (1, 2), (1, 3), (2, 4), (3, 5), (4, 6), (5, 7), (6, 8), (1, 12), (12, 10), (2, 11), (11, 9)]
 
         # Path to the local MP4 video file
-        self.video_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/test2.mp4"
+        # self.video_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/test2.mp4"
         # video_path = "rtsp://admin:Fall_Detection0@192.168.0.100:554/h264Preview_01_sub"
-        self.video_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/test2.mp4"
 
         self.output_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/output_video.mp4"  # Output video file
         self.speed_factor = 1  # Default speed factor
@@ -61,10 +62,16 @@ class VideoApp(App):
         # out = cv2.VideoWriter(output_path, fourcc, new_fps, (frame_width, frame_height))
 
         # Input pushover User and API key below
+        self.cap = None
+
+        # Fall detection & recording related variables
+        self.fps = 0
+        self.frame_width = 0
+        self.frame_height = 0
+        self.new_fps = 0
+        self.fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         self.user_key = ""
         self.api_token = ""
-
-        # Initialize variables for LSTM input
         self.sequence_length = 10
         self.pose_sequence = []
         self.fall_detected = False
@@ -80,11 +87,9 @@ class VideoApp(App):
         self.fall_segment_template = "fall_segment_{}.mp4"
         self.frame_count = 0
         self.thread = None
-        
-        
-        
         self.video_list = []
         self.current_video = None
+ 
         
         # The main container
         self.main_container = BoxLayout(orientation='vertical', padding=20, spacing=10)
@@ -106,19 +111,65 @@ class VideoApp(App):
         button_layout.add_widget(Widget())  # Empty space on the right
 
         # Adding a video and a button to the main container
+        self.main_container = BoxLayout(orientation='vertical', padding=20, spacing=10)
+    # (setup self.video_layout, self.image, button_layout, etc.)
         self.main_container.add_widget(self.video_layout)
         self.main_container.add_widget(button_layout)
-
-        # Display state (video stream or other content)
+        
         self.is_video_shown = True
         self.running = True
         self.video_thread = threading.Thread(target=self.main_loop, daemon=True)
         
-        # Clock.schedule_interval(self.update, 1.0 / 30.0)
+        # Now create a root container that will initially display the camera URL interface.
+        self.root_container = BoxLayout()
+        # Build and add the camera URL interface
+        camera_url_interface = self.build_camera_url_interface()
+        self.root_container.add_widget(camera_url_interface)
+        
+        # Instead of returning self.main_container, return the root container:
+        return self.root_container
         
         # self.main_loop()
         return self.main_container
-    
+    def build_camera_url_interface(self):
+        """Builds an interface that asks the user to input the camera URL."""
+        layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        label = Label(text="Enter camera URL", size_hint=(1, 0.2))
+        layout.add_widget(label)
+        self.url_input = TextInput(text="", multiline=False, size_hint=(1, 0.2))
+        layout.add_widget(self.url_input)
+        ok_button = Button(text="OK", size_hint=(1, 0.2))
+        ok_button.bind(on_press=self.on_camera_url_ok)
+        layout.add_widget(ok_button)
+        return layout
+
+    def on_camera_url_ok(self, instance):
+        """Handles the OK button press on the camera URL interface."""
+        self.video_path = self.url_input.text.strip()
+        if not self.video_path:
+            return  # or display an error message
+
+        # Now initialize the video capture with the given URL
+        self.cap = cv2.VideoCapture(self.video_path)
+        if not self.cap.isOpened():
+            print("Failed to open video source")
+            return
+
+        # Retrieve video properties
+        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+        self.frame_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.frame_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.new_fps = 0.08 * self.fps * self.speed_factor
+
+        # Replace the camera URL interface with your main interface.
+        self.root_container.clear_widgets()
+        self.root_container.add_widget(self.main_container)
+        
+        # Start the video thread if it is not already running.
+        if self.video_thread is None or not self.video_thread.is_alive():
+            self.video_thread = threading.Thread(target=self.main_loop, daemon=True)
+            self.video_thread.start()
+
     
     def on_start(self):
         # start video processing in a separate thread
@@ -262,7 +313,7 @@ class VideoApp(App):
             # add image
             self.video_layout.add_widget(self.image)
             self.button.text = "Show alarm records"
-        
+
         # Switch the state
         self.is_video_shown = not self.is_video_shown
 
@@ -433,11 +484,10 @@ class VideoApp(App):
                   
     def start_video(self):
         # Launch a stream for video processing
-        self.thread = threading.Thread(target=self.main_loop)
-        self.thread.start()
+        self.thread = threading.Thread(target=self.main_loop, daemon=True)
+        self.thread.start() 
        
 
 
 app = VideoApp()
-app.start_video()  # start video processing
 app.run()

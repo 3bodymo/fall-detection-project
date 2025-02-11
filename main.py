@@ -241,8 +241,8 @@ class VideoApp(App):
         # Convert the frame to a Kivy texture
             frame = frame[::-1]  # rotate frame
             buffer = frame.tobytes()
-            texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
-            texture.blit_buffer(buffer, colorfmt='bgr', bufferfmt='ubyte')
+            texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='rgb')
+            texture.blit_buffer(buffer, colorfmt='rgb', bufferfmt='ubyte')
             self.image.texture = texture
             
 
@@ -332,9 +332,11 @@ class VideoApp(App):
 
             # Frame logic processing
             self.process_frame(frame)
+            
+            display_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
             # Update the widget with a new frame
-            Clock.schedule_once(lambda dt: self.update(frame))
+            Clock.schedule_once(lambda dt: self.update(display_frame))
 
             # Key completion
             if cv2.waitKey(1) & 0xFF == 27:

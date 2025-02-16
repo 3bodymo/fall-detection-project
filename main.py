@@ -17,7 +17,7 @@ import http.client, urllib.parse
 import time
 import threading
 from ultralytics import YOLO
-yolo_model = YOLO('yolo11n.pt') 
+
 import os
 from kivy.app import App
 from kivy.uix.image import Image
@@ -37,6 +37,7 @@ from playsound import playsound
 from kivy.graphics import Color, Line, Rectangle
 from kivy.core.window import Window
 import pygame
+import shutil
 
 
 class VideoApp(App):
@@ -44,8 +45,30 @@ class VideoApp(App):
         self.video_path =""
         self.bot_token = ""
         self.chat_id = None
-        # Load the new trained LSTM model
-        self.model = load_model('E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/fall_detection_lstm_model2.keras')
+        # Get app internal storage path
+        app_storage_path = App.get_running_app().user_data_dir
+        model_filename = "fall_detection_lstm_model2.keras"
+        model_dest_path = os.path.join(app_storage_path, model_filename)
+
+        yolo_filename = "yolo11n.pt"
+        yolo_dest_path = os.path.join(app_storage_path, yolo_filename)
+
+        # Copy YOLO model if it doesn't exist
+        if not os.path.exists(yolo_dest_path):
+            src_yolo_path = os.path.join(os.path.dirname(__file__), "assets", yolo_filename)
+            shutil.copy(src_yolo_path, yolo_dest_path)
+
+        # Load the YOLO model from the new location
+        yolo_model = YOLO(yolo_dest_path)
+
+        # If model doesn't exist, copy from assets
+        if not os.path.exists(model_dest_path):
+            src_model_path = os.path.join(os.path.dirname(__file__), "assets", model_filename)
+            shutil.copy(src_model_path, model_dest_path)
+
+        # Load the model
+        self.model = load_model(model_dest_path)
+       
 
         # Initialize MediaPipe Pose
         self.mp_pose = mp.solutions.pose
@@ -60,7 +83,6 @@ class VideoApp(App):
         # Path to the local MP4 video file
 
 
-        self.output_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/output_video.mp4"  # Output video file
         self.speed_factor = 1  # Default speed factor
 
         # Open the video file and get its properties
@@ -90,21 +112,30 @@ class VideoApp(App):
         self.pose_sequence = []
         self.fall_detected = False
         self.fall_segment_writer = None
-        self.fall_segment_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/records/fall_segment_{}.mp4"
+        self.fall_segment_path = os.path.join(App.get_running_app().user_data_dir, "fall_segment_{}.mp4")
         self.fall_sequence = []
         self.fall_sequence_threshold = 2
         self.fall_recording = False
         self.non_fall_frame_count = 0
         self.fall_frame_count = 0
         self.fall_segment_index = 0
-        self.fall_segments_folder = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/records"
-        self.fall_segment_template = "fall_segment_{}.mp4"
+        
+        self.fall_segments_folder = os.path.join(app_storage_path, "records")
+        # Ensure the directory exists
+        if not os.path.exists(self.fall_segments_folder):
+            os.makedirs(self.fall_segments_folder)
+            
         self.frame_count = 0
         self.thread = None
         self.video_list = []
         self.current_video = None
         self.alarm_playing = False
-        self.alarm_sound_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/alert.wav"
+        
+        sound_dest_path = os.path.join(app_storage_path, "alert.wav")
+        if not os.path.exists(sound_dest_path):
+            src_sound_path = os.path.join(os.path.dirname(__file__), "assets", "alert.wav")
+            shutil.copy(src_sound_path, sound_dest_path)
+        self.alarm_sound_path = sound_dest_path
         
  
         Window.clearcolor = (0.85, 0.85, 0.85, 1)

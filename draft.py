@@ -23,15 +23,11 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
-import requests
-import json
 
 
 class VideoApp(App):
     def build(self):
         self.video_path =""
-        self.bot_token = ""
-        self.chat_id = None
         # Load the new trained LSTM model
         self.model = load_model('E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/fall_detection_lstm_model2.keras')
 
@@ -134,7 +130,7 @@ class VideoApp(App):
         return self.root_container
         
         # self.main_loop()
-        # return self.main_container
+        return self.main_container
     def build_camera_url_interface(self):
         """Builds an interface that asks the user to input the camera URL."""
         layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
@@ -142,42 +138,17 @@ class VideoApp(App):
         layout.add_widget(label)
         self.url_input = TextInput(text="", multiline=False, size_hint=(1, 0.2))
         layout.add_widget(self.url_input)
-        
-        label_token = Label(text="Enter Telegram Bot Token", size_hint=(1, 0.2))
-        layout.add_widget(label_token)
-        self.token_input = TextInput(text="", multiline=False, size_hint=(1, 0.2))
-        layout.add_widget(self.token_input)
-        
         ok_button = Button(text="OK", size_hint=(1, 0.2))
         ok_button.bind(on_press=self.on_camera_url_ok)
         layout.add_widget(ok_button)
-        
         return layout
 
     def on_camera_url_ok(self, instance):
         """Handles the OK button press on the camera URL interface."""
         self.video_path = self.url_input.text.strip()
-        self.bot_token = self.token_input.text.strip()
-        
         if not self.video_path:
-          print("Error: No camera URL provided.")
-          return
-        
-        if not self.bot_token:
-          print("Error: No number provided.")
-          return
+            return  # or display an error message
 
-        if self.video_path.isdigit():
-          self.video_path = int(self.video_path)  # Convert to integer for webcam index
-        else:
-          self.video_path = self.video_path
-
-        self.chat_id = self.get_chat_id()
-        
-        if not self.chat_id:
-          print("❌ Chat ID not found. Make sure to send '/start' to the bot.")
-          return
-      
         # Now initialize the video capture with the given URL
         self.cap = cv2.VideoCapture(self.video_path)
         if not self.cap.isOpened():
@@ -200,60 +171,14 @@ class VideoApp(App):
             self.video_thread.start()
 
     
-    def get_chat_id(self):
-      """Fetches chat_id dynamically when the bot receives a /start message."""
-      url = f"https://api.telegram.org/bot{self.bot_token}/getUpdates"
-      response = requests.get(url)
-
-      if response.status_code == 200:
-          data = response.json()
-          print("Response from Telegram API:", json.dumps(data, indent=4))  # Debugging
-
-          for update in data.get("result", []):
-              if "message" in update and "chat" in update["message"]:
-                  self.chat_id = update["message"]["chat"]["id"]
-                  print(f"✅ Chat ID found: {self.chat_id}")
-                  return self.chat_id
-
-      print("❌ Error: No chat_id found. Please send '/start' to the bot first.")
-      return None
-
+    def on_start(self):
+        # start video processing in a separate thread
+        # self.cap = cv2.VideoCapture(self.video_path)
+        # self.cap = cv2.VideoCapture(0)  # '0' - the first camera (web camera)
+        # self.cap = "./test2.mp4"
         
-    def send_telegram_message(self, text):
-      """Sends an alarm message to Telegram and logs the response."""
-      if not self.chat_id:
-          print("❌ Error: No chat_id found. Cannot send message.")
-          return
-
-      url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
-      data = {"chat_id": self.chat_id, "text": text}
-
-      response = requests.post(url, data=data)
-      if response.status_code == 200:
-          print("✅ Message sent successfully!")
-      else:
-          print("❌ Failed to send message. Response:", response.text)
-
-
-    def send_telegram_video(self, video_path):
-      """Sends a recorded fall video to Telegram."""
-      if not self.chat_id:
-          print("❌ Error: No chat_id found. Cannot send video.")
-          return
-
-      if not os.path.exists(video_path):
-          print(f"❌ Error: Video file '{video_path}' not found.")
-          return
-
-      url = f"https://api.telegram.org/bot{self.bot_token}/sendVideo"
-      with open(video_path, "rb") as video_file:
-          response = requests.post(url, data={"chat_id": self.chat_id}, files={"video": video_file})
-
-      if response.status_code == 200:
-          print("✅ Video sent successfully!")
-      else:
-          print("❌ Failed to send video. Response:", response.text)
-
+        
+        self.video_thread.start()
     
        
     def on_stop(self):
@@ -514,8 +439,7 @@ class VideoApp(App):
                     
                     # Check if falling has continued for 50 frames
                     if self.fall_recording and self.fall_frame_count >= 50:
-                        self.send_telegram_message("🚨 Fall detected! Sending video soon.")
-                        # self.save_and_reset_recording()
+                        self.save_and_reset_recording()
 
                 # Display text and skeleton on frame
                 cv2.putText(frame, text, (frame.shape[1] - 150, 30), 
@@ -549,20 +473,19 @@ class VideoApp(App):
         )
 
     def save_and_reset_recording(self):
-      """Saves the current recording and sends an alert message."""
-      self.fall_recording = False
-      if self.fall_segment_writer:
-          self.fall_segment_writer.release()
-          self.fall_segment_writer = None
+        """Saves the current recording and resets recording state."""
+        self.fall_recording = False
+        if self.fall_segment_writer:
+            self.fall_segment_writer.release()
+            self.fall_segment_writer = None
+        self.fall_frame_count = 0  # Reset fall frame count after saving
 
-      # Get the last recorded file path
-      segment_video_path = self.fall_segment_path.format(self.fall_segment_index)
-
-      # Send alert message with video
-      if os.path.exists(segment_video_path):
-        self.send_telegram_message("🚨 Fall detected! Sending video now.")
-        self.send_telegram_video(segment_video_path)
-
+    
+                  
+    def start_video(self):
+        # Launch a stream for video processing
+        self.thread = threading.Thread(target=self.main_loop, daemon=True)
+        self.thread.start() 
        
 
 

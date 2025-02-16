@@ -1,3 +1,11 @@
+# TESTING PART======================================================
+# self.video_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/test2.mp4"
+# self.cap = cv2.VideoCapture(0)  # '0' - the first camera (web camera)
+# video_path = "rtsp://admin:Fall_Detection0@192.168.0.100:554/h264Preview_01_sub"
+
+# telegram_token = 7856607431:AAHuYzNHSJh04soAf_2Fks46WAFhhDXIlwU
+# =================================================================
+
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -25,6 +33,10 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
 import requests
 import json
+from playsound import playsound
+from kivy.graphics import Color, Line, Rectangle
+from kivy.core.window import Window
+import pygame
 
 
 class VideoApp(App):
@@ -46,15 +58,13 @@ class VideoApp(App):
         self.connections = [(0, 1), (0, 2), (1, 2), (1, 3), (2, 4), (3, 5), (4, 6), (5, 7), (6, 8), (1, 12), (12, 10), (2, 11), (11, 9)]
 
         # Path to the local MP4 video file
-        # self.video_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/test2.mp4"
-        # video_path = "rtsp://admin:Fall_Detection0@192.168.0.100:554/h264Preview_01_sub"
+
 
         self.output_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/output_video.mp4"  # Output video file
         self.speed_factor = 1  # Default speed factor
 
         # Open the video file and get its properties
         self.cap = cv2.VideoCapture(self.video_path)
-        # self.cap = cv2.VideoCapture(0)  # '0' - the first camera (web camera)
         
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.frame_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -93,13 +103,16 @@ class VideoApp(App):
         self.thread = None
         self.video_list = []
         self.current_video = None
- 
+        self.alarm_playing = False
+        self.alarm_sound_path = "E:/Users/Настя/Downloads/thws/Project/app/fall-detection-project/alert.wav"
         
+ 
+        Window.clearcolor = (0.85, 0.85, 0.85, 1)
         # The main container
         self.main_container = BoxLayout(orientation='vertical', padding=20, spacing=10)
 
         # Video container
-        self.video_layout = BoxLayout(size_hint=(1, 0.8))
+        self.video_layout = BoxLayout(size_hint=(1, 1))
         # Widget for displaying video
         self.image = Image(size_hint=(1, 1))  # The video adapts to the container size
 
@@ -108,7 +121,36 @@ class VideoApp(App):
 
         # Container for button
         button_layout = BoxLayout(size_hint=(1, 0.2), padding=[20, 10])
-        self.button = Button(text="Show alarm records", size_hint=(None, None), size=(300, 50))
+        # self.button = Button(text="Show alarm records", size_hint=(None, None), size=(300, 50))
+        
+        
+        self.button = Button(
+            text="Show alarm records",
+            size_hint=(None, None),  
+            size=(300, 50),
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            background_normal="",  # Disable default texture
+            color=(0.3, 0.15, 0.05, 1),  # Dark brown text
+            background_color=(1, 1, 0.8, 1)
+        )
+        # Custom styling using canvas.before
+        with self.button.canvas.before:
+            # Border (2px Dark Brown)
+            Color(0.3, 0.15, 0.05, 1)  # Dark Brown RGBA
+            border_line = Line(width=2, points=[
+                self.button.x, self.button.y,  # Bottom-left
+                self.button.right, self.button.y,  # Bottom-right
+                self.button.right, self.button.top,  # Top-right
+                self.button.x, self.button.top,  # Top-left
+                self.button.x, self.button.y  # Closing the rectangle
+            ])
+
+        # Assign the drawn objects to the button so they can be updated
+        self.button.border_line = border_line
+
+        # Ensure updates when resized/moved
+        self.button.bind(pos=self.update_bg, size=self.update_bg)
+        
         self.button.bind(on_press=self.toggle_view)
         button_layout.add_widget(Widget())  # Empty space on the left
         button_layout.add_widget(self.button)
@@ -135,25 +177,95 @@ class VideoApp(App):
         
         # self.main_loop()
         # return self.main_container
+    def update_bg(self, instance, *args):
+        """Update the background and border when the button is resized or moved"""
+        instance.border_line.points = [
+            instance.x, instance.y,  # Bottom-left
+            instance.right, instance.y,  # Bottom-right
+            instance.right, instance.top,  # Top-right
+            instance.x, instance.top,  # Top-left
+            instance.x, instance.y  # Closing the rectangle
+        ]
+        
     def build_camera_url_interface(self):
         """Builds an interface that asks the user to input the camera URL."""
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
-        label = Label(text="Enter camera URL", size_hint=(1, 0.2))
+        layout = BoxLayout(orientation='vertical', padding=20, spacing=20)
+        # label = Label(text="Enter camera URL", size_hint=(0.8, 0.06),  pos_hint={"center_x": 0.5, "center_y": 0.5})
+        label = Label(
+            text="Enter camera URL",
+            size_hint=(0.8, 0.06),
+            # height=30,
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            color=(0.3, 0.15, 0.05, 1)  # Dark brown text
+        )
         layout.add_widget(label)
-        self.url_input = TextInput(text="", multiline=False, size_hint=(1, 0.2))
+        self.url_input = TextInput(
+            text="",
+            multiline=False,
+            size_hint=(0.8, 0.06),
+            # height=50,
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            foreground_color=(0.3, 0.15, 0.05, 1),  # Dark brown text
+            background_color=(1, 1, 1, 1)  # White background for input
+        )
         layout.add_widget(self.url_input)
         
-        label_token = Label(text="Enter Telegram Bot Token", size_hint=(1, 0.2))
+        label_token = Label(
+            text="Enter Telegram Bot Token",
+            size_hint=(0.8, 0.06),
+            # height=30,
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            color=(0.3, 0.15, 0.05, 1)  # Dark brown text
+        )
         layout.add_widget(label_token)
-        self.token_input = TextInput(text="", multiline=False, size_hint=(1, 0.2))
+        self.token_input = TextInput(
+            text="7856607431:AAHuYzNHSJh04soAf_2Fks46WAFhhDXIlwU",
+            multiline=False,
+            size_hint=(0.8, 0.06),
+            # height=50,
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            foreground_color=(0.3, 0.15, 0.05, 1),  # Dark brown text
+            background_color=(1, 1, 1, 1)  # White background for input
+        )
         layout.add_widget(self.token_input)
         
-        ok_button = Button(text="OK", size_hint=(1, 0.2))
+        # ok_button = Button(text="OK", size_hint=(0.3, 0.03), pos_hint={"center_x": 0.5, "center_y": 0.5})
+        
+        ok_button = Button(
+            text="OK",
+            size_hint=(None, None),  # Smaller button
+            size=(300, 50),
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            background_normal="",  # Disable default texture
+            color=(0.3, 0.15, 0.05, 1),  # Dark brown text
+            background_color=(1, 1, 0.8, 1)
+        )
+        # Custom styling using canvas.before
+        with ok_button.canvas.before:
+            # Border (2px Dark Brown)
+            Color(0.3, 0.15, 0.05, 1)  # Dark Brown RGBA
+            border_line = Line(width=2, points=[
+                ok_button.x, ok_button.y,  # Bottom-left
+                ok_button.right, ok_button.y,  # Bottom-right
+                ok_button.right, ok_button.top,  # Top-right
+                ok_button.x, ok_button.top,  # Top-left
+                ok_button.x, ok_button.y  # Closing the rectangle
+            ])
+
+        # Assign the drawn objects to the button so they can be updated
+        ok_button.border_line = border_line
+
+        # Ensure updates when resized/moved
+        ok_button.bind(pos=self.update_bg, size=self.update_bg)
+    
         ok_button.bind(on_press=self.on_camera_url_ok)
         layout.add_widget(ok_button)
         
         return layout
 
+    
+    
+    
     def on_camera_url_ok(self, instance):
         """Handles the OK button press on the camera URL interface."""
         self.video_path = self.url_input.text.strip()
@@ -262,6 +374,24 @@ class VideoApp(App):
         if self.cap.isOpened():
             self.cap.release()
         cv2.destroyAllWindows()
+        
+        
+  
+    pygame.mixer.init()
+
+    def play_alarm(self):
+        """Play the alarm sound asynchronously (non-blocking)"""
+        try:
+            pygame.mixer.music.load(self.alarm_sound_path)  # Load the sound
+            pygame.mixer.music.play()  # Play the sound without blocking
+        except Exception as e:
+            print(f"Error playing alarm: {e}")
+
+    def trigger_alarm(self):
+        """Trigger the alarm without blocking"""
+        self.alarm_thread = threading.Thread(target=self.play_alarm)
+        self.alarm_thread.daemon = True
+        self.alarm_thread.start()
         
 # ============Video_records part=================================================================================
     def video_records_container(self):
@@ -512,10 +642,15 @@ class VideoApp(App):
                     if not self.fall_recording and self.fall_frame_count >= self.fall_sequence_threshold:
                         self.start_new_recording()
                     
-                    # Check if falling has continued for 50 frames
-                    if self.fall_recording and self.fall_frame_count >= 50:
+                    if self.fall_recording and self.fall_frame_count == self.fall_sequence_threshold+3:
+                        self.trigger_alarm()
                         self.send_telegram_message("🚨 Fall detected! Sending video soon.")
-                        # self.save_and_reset_recording()
+                         # Check if falling has continued for 20 frames
+                    if self.fall_frame_count == 20:
+                        self.trigger_alarm()
+                        self.alarm_playing = False
+                        self.save_and_reset_recording()
+                        
 
                 # Display text and skeleton on frame
                 cv2.putText(frame, text, (frame.shape[1] - 150, 30), 
